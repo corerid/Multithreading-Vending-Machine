@@ -17,10 +17,10 @@ There are 2 types of file.
 2. consumerN.txt (N = 1-8)
 
 It's mean that we have 5 suppliers selling different goods and 8 consumers who gonna bye our goods.
-In the file we have 3 atrributes seperate by \n 
-First line => Name of product
-Seconde line => Interval time
-Third line => Repeat (if thread failed to supplie or consume more than this number, it will x2 the interval time)
+In the file we have 3 attributes seperate by \n <br />
+First line => Name of product<br />
+Seconde line => Interval time<br />
+Third line => Repeat (if thread failed to supplie or consume more than this number, it will x2 the interval time)<br />
 ```
 $ ./shell filename
 ```
