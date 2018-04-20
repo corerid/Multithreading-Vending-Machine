@@ -76,7 +76,7 @@ void* doSupThread(void* id)
 					tmp_interval = items_sup[ID].interval;
 				}
 			}				
-			printf(" %s supplier going to wait.\n", items_sup[ID].Name);
+			printf(" %s supplier%d going to wait. %d sec\n", items_sup[ID].Name, ID+1, tmp_interval);
 			pthread_mutex_unlock(&mutex);
 			sleep(tmp_interval);
 
@@ -94,7 +94,7 @@ void* doSupThread(void* id)
 			i++;
 		}
         buffer.buf[ID] +=1 ;
-		printf(" %s supplied 1 unit. stock after = %d\n", items_sup[ID].Name, buffer.buf[ID]);
+		printf(" %s supplied%d 1 unit. stock after = %d\n", items_sup[ID].Name, ID+1, buffer.buf[ID]);
 		}	
         pthread_mutex_unlock(&mutex);
 		sleep(items_sup[ID].interval);
@@ -110,6 +110,12 @@ void* doConThread(void* id)
 	int buf_ind;
 	readConsumerConfigFile(ID);
 	int tmp_interval = items_con[ID].interval;
+	for(int i=0; i<MAX_SUPPLIER; i++){
+		if(strcmp(items_con[ID].Name, items_sup[i].Name) == 0){
+			buf_ind = i;
+			break;
+		}
+	}	
 	pthread_mutex_unlock(&mutex);
 
     while(1) {
@@ -139,7 +145,7 @@ void* doConThread(void* id)
 					tmp_interval = items_con[ID].interval;
 				}
 			}
-			printf(" %s consumer going to wait.\n", items_con[ID].Name);
+			printf(" %s consumer%d going to wait. %d sec\n", items_con[ID].Name, ID+1, tmp_interval);
 			pthread_mutex_unlock(&mutex);
 			sleep(tmp_interval);
 		}
@@ -156,7 +162,7 @@ void* doConThread(void* id)
 			i++;
 		}
         buffer.buf[buf_ind] -= 1;
-		printf(" %s consumed 1 unit. stock after = %d\n", items_con[ID].Name, buffer.buf[buf_ind]);
+		printf(" %s consumed%d 1 unit. stock after = %d\n", items_con[ID].Name, ID+1, buffer.buf[buf_ind]);
         pthread_mutex_unlock(&mutex);
 		sleep(items_con[ID].interval);
 		}
