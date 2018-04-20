@@ -62,7 +62,7 @@ void* doSupThread(void* id)
 
 	while(1) {
 
-		pthread_mutex_lock(&mutex);
+		pthread_mutex_lock(&buffer.lock[ID]);
 		if(buffer.buf[ID] >= 100){ //product has more than 100
 			items_sup[ID].failed_count++;		
 			if (items_sup[ID].failed_count > items_sup[ID].repeat){
@@ -80,8 +80,7 @@ void* doSupThread(void* id)
 				i++;
 			}							
 			printf(" %s supplier going to wait.\n", items_sup[ID].Name);
-			pthread_mutex_unlock(&mutex);
-			printf("sleep: %d\n" ,tmp_interval);
+			pthread_mutex_unlock(&buffer.lock[ID]);
 			sleep(tmp_interval);
 
 		}
@@ -99,7 +98,7 @@ void* doSupThread(void* id)
 		}
         buffer.buf[ID] +=1 ;
 		printf(" %s supplied 1 unit. stock after = %d\n", items_sup[ID].Name, buffer.buf[ID]);
-        pthread_mutex_unlock(&mutex);
+        pthread_mutex_unlock(&buffer.lock[ID]);
 		sleep(items_sup[ID].interval);
 		}
     }	
@@ -136,7 +135,7 @@ void* doConThread(void* id)
 
     while(1) {
 
-        pthread_mutex_lock(&mutex);
+        pthread_mutex_lock(&buffer.lock[buf_ind]);
 
 		if(0 == buffer.buf[buf_ind]){ //product has 0 so consumer cannot bye
 			items_con[ID].failed_count++;
@@ -155,7 +154,7 @@ void* doConThread(void* id)
 				}
 			}
 			printf(" %s consumer going to wait.\n",items_con[ID].Name);
-			pthread_mutex_unlock(&mutex);
+			pthread_mutex_unlock(&buffer.lock[buf_ind]);
 			sleep(tmp_interval);
 		}
 		else{
@@ -172,7 +171,7 @@ void* doConThread(void* id)
 		}
         buffer.buf[buf_ind] -= 1;
 		printf(" %s consumed 1 unit. stock after = %d\n", items_con[ID].Name, buffer.buf[buf_ind]);
-        pthread_mutex_unlock(&mutex);
+        pthread_mutex_unlock(&buffer.lock[buf_ind]);
 		sleep(items_con[ID].interval);
 		}
     }
