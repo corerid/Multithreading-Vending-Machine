@@ -15,6 +15,7 @@ void* doConThread(void* id);
 char* timeStamp();
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 
 typedef struct item{
     char Name[256];
@@ -55,36 +56,39 @@ void* doSupThread(void* id)
 	pthread_mutex_lock(&mutex);
 	int ID = (long)id;
 	readSupplierConfigFile(ID);
+	pthread_cond_broadcast(&cond);	//Supplier send broadcast to waiting thread after finish readfile
 	int tmp_interval = items_sup[ID].interval;
 	pthread_mutex_unlock(&mutex);
 
 	while(1) {
 
 		pthread_mutex_lock(&mutex);
-		if(buffer.buf[ID] > 100){
-			// TIME STAMP //
-			int i=0;
-			char* dateAndTime = timeStamp();
-			while(dateAndTime[i] != '\n'){
-				printf("%c", dateAndTime[i]);
-				i++;
-			}		
+		if(buffer.buf[ID] >= 100){ //product has more than 100
+			items_sup[ID].failed_count++;		
 			if (items_sup[ID].failed_count > items_sup[ID].repeat){
 				items_sup[ID].failed_count = 0;
 				tmp_interval *= 2;
 				if (tmp_interval > 60){
 					tmp_interval = items_sup[ID].interval;
 				}
-			}				
-			printf(" %s supplier%d going to wait. %d sec\n", items_sup[ID].Name, ID+1, tmp_interval);
+			}
+			// TIME STAMP //
+			int i=0;
+			char* dateAndTime = timeStamp();
+			while(dateAndTime[i] != '\n'){
+				printf("%c", dateAndTime[i]);
+				i++;
+			}							
+			printf(" %s supplier going to wait.\n", items_sup[ID].Name);
 			pthread_mutex_unlock(&mutex);
+			printf("sleep: %d\n" ,tmp_interval);
 			sleep(tmp_interval);
 
 		}
 		else{
 
 		items_sup[ID].failed_count = 0;
-		tmp_interval = items_sup[ID].interval;		
+		tmp_interval = items_sup[ID].interval;	
 
 		// TIME STAMP //
 		int i=0;
@@ -94,10 +98,10 @@ void* doSupThread(void* id)
 			i++;
 		}
         buffer.buf[ID] +=1 ;
-		printf(" %s supplied%d 1 unit. stock after = %d\n", items_sup[ID].Name, ID+1, buffer.buf[ID]);
-		}	
+		printf(" %s supplied 1 unit. stock after = %d\n", items_sup[ID].Name, buffer.buf[ID]);
         pthread_mutex_unlock(&mutex);
 		sleep(items_sup[ID].interval);
+		}
     }	
 	
 	return NULL;
@@ -107,7 +111,7 @@ void* doConThread(void* id)
 {
 	pthread_mutex_lock(&mutex);
 	int ID = (long)id;
-	int buf_ind;
+	int buf_ind = -1;
 	readConsumerConfigFile(ID);
 	int tmp_interval = items_con[ID].interval;
 	for(int i=0; i<MAX_SUPPLIER; i++){
@@ -116,20 +120,25 @@ void* doConThread(void* id)
 			break;
 		}
 	}	
+	//if buf_ind = 1 mean that this thread can't macth supplier's product
+	//so have to wait supplier thread read that file
+	while(buf_ind == -1){
+		pthread_cond_wait(&cond, &mutex);
+		//update buf_ind after recieve broadcast
+		for(int i=0; i<MAX_SUPPLIER; i++){
+			if(strcmp(items_con[ID].Name, items_sup[i].Name) == 0){
+				buf_ind = i;
+				break;
+			}
+		}
+	}
 	pthread_mutex_unlock(&mutex);
 
     while(1) {
 
         pthread_mutex_lock(&mutex);
 
-		for(int i=0; i<MAX_SUPPLIER; i++){
-			if(strcmp(items_con[ID].Name, items_sup[i].Name) == 0){
-				buf_ind = i;
-				break;
-			}
-		}	
-
-		if(0 == buffer.buf[buf_ind]){
+		if(0 == buffer.buf[buf_ind]){ //product has 0 so consumer cannot bye
 			items_con[ID].failed_count++;
 			// TIME STAMP //
 			int i=0;
@@ -145,7 +154,7 @@ void* doConThread(void* id)
 					tmp_interval = items_con[ID].interval;
 				}
 			}
-			printf(" %s consumer%d going to wait. %d sec\n", items_con[ID].Name, ID+1, tmp_interval);
+			printf(" %s consumer going to wait.\n",items_con[ID].Name);
 			pthread_mutex_unlock(&mutex);
 			sleep(tmp_interval);
 		}
@@ -162,7 +171,7 @@ void* doConThread(void* id)
 			i++;
 		}
         buffer.buf[buf_ind] -= 1;
-		printf(" %s consumed%d 1 unit. stock after = %d\n", items_con[ID].Name, ID+1, buffer.buf[buf_ind]);
+		printf(" %s consumed 1 unit. stock after = %d\n", items_con[ID].Name, buffer.buf[buf_ind]);
         pthread_mutex_unlock(&mutex);
 		sleep(items_con[ID].interval);
 		}
